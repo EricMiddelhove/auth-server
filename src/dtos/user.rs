@@ -12,6 +12,7 @@ pub struct LoginUser {
 
 #[derive(serde::Serialize, serde::Deserialize)]
 pub struct VerifyRequest {
+    pub verify_secret: String,
     pub email: String,
     pub auth_token: String,
 }

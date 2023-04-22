@@ -109,6 +109,13 @@ async fn login(info: web::Json<dtos::user::LoginUser>) -> impl Responder {
 }
 
 async fn verify(info: web::Json<dtos::user::VerifyRequest>) -> impl Responder {
+    let verify_secret = env::var("VERIFY_SECRET").expect("VERIFY_SECRET must be set");
+
+    if info.verify_secret != verify_secret {
+        println!("Invalid verify secret");
+        return HttpResponse::NotFound().finish();
+    }
+
     let client = get_new_client().await;
     let db = client.database("users");
     let coll: Collection<DatabaseUser> = db.collection("users");
