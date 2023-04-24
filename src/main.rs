@@ -137,6 +137,9 @@ async fn verify(info: web::Json<dtos::user::VerifyRequest>) -> impl Responder {
 async fn main() -> std::io::Result<()> {
     println!("Server is running on port 3000...");
 
+    println!("Environment: ");
+    println!("MONGO_URI: {}", env::var("MONGO_URI").unwrap());
+
     HttpServer::new(|| {
         App::new()
             .route("/", web::get().to(index))
@@ -144,7 +147,7 @@ async fn main() -> std::io::Result<()> {
             .route("/login", web::post().to(login))
             .route("/verify", web::post().to(verify))
     })
-    .bind(("127.0.0.1", 3000))?
+    .bind(("0.0.0.0", 3000))?
     .run()
     .await
 }
