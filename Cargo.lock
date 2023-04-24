@@ -279,7 +279,6 @@ dependencies = [
  "num_cpus",
  "once_cell",
  "serde",
- "sha1",
  "tokio",
 ]
 

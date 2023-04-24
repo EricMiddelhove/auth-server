@@ -1,6 +1,5 @@
 export MONGO_URI="mongodb://localhost:27017"
 export RUST_BACKTRACE=1
-export PASSWORD_CHECK_CHUNK_SIZE=64
 export VERIFY_SECRET="aölsdfjadgöflhdfhg0ew94g8ur3q980374256-sfoüasefg uiushfaiofaöruh5§$%/()=ndkjalbdsferiuzelqugQFW8NZß9Z8N9WOXGEQWPÜ,,ÜUhtervnteruicnwliet5hectlwhneritcbcoeirtgwleuihtnxiwxnetx712nrtx40238ß3tz02394t8zq#weüfp32p894czp8 7nt<9c8pz7290c45zp2xu3hrpmyox24phnv2t19x8634tr10287rtßnmßqxwe9z6tbcrß80tgQ8W9N475Ü 9MU8ß^x0´tv1x0ru29x3407tcr378t9c23t"
 
 echo "Successfully set up environment variables"
