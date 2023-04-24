@@ -6,4 +6,6 @@ COPY . .
 RUN cargo clean
 RUN cargo build --release
 
+EXPOSE 3000
+
 CMD [ "./target/release/auth-server" ]
