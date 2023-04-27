@@ -20,6 +20,7 @@ mod dtos;
 mod password;
 
 async fn get_new_client() -> Client {
+    println!("Creating new client...");
     let mongo_uri = env::var("MONGO_URI").expect("MONGO_URI must be set");
 
     let options =
@@ -29,6 +30,7 @@ async fn get_new_client() -> Client {
 
     let client = Client::with_options(options).expect("Failed to initialize client.");
 
+    println!("Client created!");
     client
 }
 
@@ -53,6 +55,8 @@ async fn register(info: web::Json<dtos::user::DtoUser>) -> impl Responder {
     if result.inserted_id.to_string().is_empty() {
         return HttpResponse::InternalServerError().finish();
     }
+
+    println!("User created with id: {}", result.inserted_id.to_string());
 
     HttpResponse::Ok().body(result.inserted_id.to_string())
 }
@@ -122,15 +126,36 @@ async fn verify(info: web::Json<dtos::user::VerifyRequest>) -> impl Responder {
 
     let result = coll
         .find_one(
-            doc! {"auth_tokens":  &info.auth_token, "email": &info.email},
+            doc! {"auth_tokens":  &info.auth_token},
             Some(mongodb::options::FindOneOptions::builder().build()),
         )
         .await;
 
-    println!("Recieved verify request with email: {}", info.email);
-    let is_verified = result.unwrap().is_some();
+    if result.is_err() {
+        return HttpResponse::NotFound().finish();
+    }
 
-    HttpResponse::Ok().body(is_verified.to_string())
+    let result = result.unwrap();
+    let is_verified = result.is_some();
+
+    let result = result.unwrap();
+    let email = result.email;
+
+    let email_hash = sha256::digest(email.as_bytes()).to_string();
+
+    println!("User is verified: {}", is_verified);
+    println!("User email: {}", email);
+
+    let response_body = dtos::user::VerifyResponse {
+        is_verified,
+        owner: email_hash,
+    };
+
+    let json = serde_json::to_string(&response_body).unwrap();
+
+    println!("Response body: {}", json);
+
+    HttpResponse::Ok().body(json)
 }
 
 #[actix_web::main]

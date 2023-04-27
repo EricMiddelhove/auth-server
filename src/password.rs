@@ -50,6 +50,8 @@ impl Password {
         let entropy = tmp.powf(password_length as f64);
         let bits_of_entropy = entropy.log2();
 
+        println!("{}", self.password);
+
         bits_of_entropy
     }
 
