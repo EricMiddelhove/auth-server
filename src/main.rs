@@ -4,9 +4,13 @@ use actix_web::{
 };
 use argon2::{
     self,
-    password_hash::{rand_core::OsRng, SaltString},
+    password_hash::{
+        rand_core::{OsRng, RngCore},
+        SaltString,
+    },
     Argon2, PasswordHash, PasswordVerifier,
 };
+use base64::{engine::general_purpose, Engine as _};
 use dtos::user::DatabaseUser;
 use mongodb::{
     bson::doc,
@@ -93,9 +97,19 @@ async fn login(info: web::Json<dtos::user::LoginUser>) -> impl Responder {
         return HttpResponse::NotFound().finish();
     }
 
-    let auth_token = SaltString::generate(&mut OsRng).to_string();
+    // let auth_token = SaltString::generate(&mut OsRng).to_string();
 
-    println!("issued auth_token: {}", auth_token);
+    let mut key = [0u8; 16];
+    OsRng.fill_bytes(&mut key);
+
+    let mut random64 = OsRng.next_u64().to_string();
+
+    for i in 0..10_u8 {
+        random64.push_str(&OsRng.next_u64().to_string());
+    }
+
+    let base64 = general_purpose::STANDARD_NO_PAD.encode(random64.as_bytes());
+    let auth_token = base64;
 
     let result = coll
         .update_one(

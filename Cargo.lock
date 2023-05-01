@@ -273,6 +273,7 @@ version = "0.1.0"
 dependencies = [
  "actix-web",
  "argon2",
+ "base64 0.21.0",
  "futures",
  "hex",
  "mongodb",
