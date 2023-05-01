@@ -4,10 +4,7 @@ use actix_web::{
 };
 use argon2::{
     self,
-    password_hash::{
-        rand_core::{OsRng, RngCore},
-        SaltString,
-    },
+    password_hash::rand_core::{OsRng, RngCore},
     Argon2, PasswordHash, PasswordVerifier,
 };
 use base64::{engine::general_purpose, Engine as _};
@@ -104,7 +101,7 @@ async fn login(info: web::Json<dtos::user::LoginUser>) -> impl Responder {
 
     let mut random64 = OsRng.next_u64().to_string();
 
-    for i in 0..10_u8 {
+    for _ in 0..10_u8 {
         random64.push_str(&OsRng.next_u64().to_string());
     }
 
