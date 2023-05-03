@@ -4,30 +4,7 @@ use std::time::{self, SystemTime};
 
 use crate::password::Password;
 
-#[derive(serde::Serialize, serde::Deserialize)]
-pub struct LoginUser {
-    pub email: String,
-    pub password: String,
-}
-
-#[derive(serde::Serialize, serde::Deserialize)]
-pub struct VerifyRequest {
-    pub verify_secret: String,
-    pub auth_token: String,
-}
-
-#[derive(serde::Serialize, serde::Deserialize)]
-pub struct VerifyResponse {
-    pub is_verified: bool,
-    pub owner: String,
-}
-
-#[derive(serde::Serialize, serde::Deserialize)]
-pub struct DtoUser {
-    pub name: String,
-    pub email: String,
-    pub password: String,
-}
+use super::authtoken::AuthToken;
 
 #[derive(serde::Serialize, serde::Deserialize)]
 pub struct DatabaseUser {
@@ -37,8 +14,7 @@ pub struct DatabaseUser {
     pub password: String,
     pub created_at: u64,
     pub updated_at: u64,
-    pub auth_grants: Vec<String>,
-    pub auth_tokens: Vec<String>,
+    pub auth_tokens: Vec<AuthToken>,
 }
 impl DatabaseUser {
     pub fn new(name: &String, email: &String, password: Password) -> DatabaseUser {
@@ -54,7 +30,6 @@ impl DatabaseUser {
             email: email.clone(),
             created_at: now,
             updated_at: now,
-            auth_grants: vec![],
             auth_tokens: vec![],
         }
     }
@@ -65,9 +40,4 @@ impl DatabaseUser {
     ) -> mongodb::results::InsertOneResult {
         collection.insert_one(self, None).await.unwrap()
     }
-}
-
-#[derive(serde::Serialize, serde::Deserialize)]
-pub struct Grant {
-    pub auth_grant: String,
 }

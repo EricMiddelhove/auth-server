@@ -8,14 +8,17 @@ use argon2::{
     Argon2, PasswordHash, PasswordVerifier,
 };
 use base64::{engine::general_purpose, Engine as _};
-use dtos::user::DatabaseUser;
+use dtos::{authtoken::AuthToken, user::DatabaseUser};
 use mongodb::{
     bson::doc,
     options::{ClientOptions, ResolverConfig},
     Client, Collection, Database,
 };
 use password::Password;
-use std::env;
+use std::{
+    env,
+    time::{self, SystemTime},
+};
 
 mod dtos;
 mod password;
@@ -39,7 +42,7 @@ async fn index() -> &'static str {
     "This server is online!"
 }
 
-async fn register(info: web::Json<dtos::user::DtoUser>) -> impl Responder {
+async fn register(info: web::Json<dtos::request::RegisterRequest>) -> impl Responder {
     let password = Password::new(&info.password);
     if password.is_secure() == false {
         return HttpResponse::BadRequest().body("Password is not secure");
@@ -62,23 +65,23 @@ async fn register(info: web::Json<dtos::user::DtoUser>) -> impl Responder {
     HttpResponse::Ok().body(result.inserted_id.to_string())
 }
 
-async fn login(info: web::Json<dtos::user::LoginUser>) -> impl Responder {
+async fn login(info: web::Json<dtos::request::LoginRequest>) -> impl Responder {
     let client = get_new_client().await;
     let db = client.database("users");
     let coll = db.collection("users");
 
     println!("recieved login request with email {}", info.email);
 
-    let result: Option<DatabaseUser> = coll
-        .find_one(doc! {"email": &info.email}, None)
-        .await
-        .unwrap();
+    let result: Result<Option<DatabaseUser>, mongodb::error::Error> =
+        coll.find_one(doc! {"email": &info.email}, None).await;
 
-    if result.is_none() {
+    if result.is_err() {
+        println!("{}", result.err().unwrap().to_string());
         println!("Account not found");
         return HttpResponse::NotFound().finish();
     }
-    let result: DatabaseUser = result.unwrap();
+
+    let result: DatabaseUser = result.unwrap().unwrap();
 
     let password = &info.password;
     let password = password.as_bytes();
@@ -94,8 +97,6 @@ async fn login(info: web::Json<dtos::user::LoginUser>) -> impl Responder {
         return HttpResponse::NotFound().finish();
     }
 
-    // let auth_token = SaltString::generate(&mut OsRng).to_string();
-
     let mut key = [0u8; 16];
     OsRng.fill_bytes(&mut key);
 
@@ -106,7 +107,17 @@ async fn login(info: web::Json<dtos::user::LoginUser>) -> impl Responder {
     }
 
     let base64 = general_purpose::STANDARD_NO_PAD.encode(random64.as_bytes());
-    let auth_token = base64;
+    let auth_token_string = base64;
+    let expire_date = SystemTime::now()
+        .duration_since(time::UNIX_EPOCH)
+        .expect("Time went backwards")
+        .as_secs()
+        + 60 * 60 * 24;
+
+    let auth_token = AuthToken {
+        token: auth_token_string,
+        expire_date: expire_date as i64,
+    };
 
     let result = coll
         .update_one(
@@ -120,10 +131,10 @@ async fn login(info: web::Json<dtos::user::LoginUser>) -> impl Responder {
         return HttpResponse::InternalServerError().finish();
     }
 
-    HttpResponse::Ok().body(auth_token)
+    HttpResponse::Ok().body(auth_token.token)
 }
 
-async fn verify(info: web::Json<dtos::user::VerifyRequest>) -> impl Responder {
+async fn verify(info: web::Json<dtos::request::VerifyRequest>) -> impl Responder {
     let verify_secret = env::var("VERIFY_SECRET").expect("VERIFY_SECRET must be set");
 
     if info.verify_secret != verify_secret {
@@ -136,10 +147,7 @@ async fn verify(info: web::Json<dtos::user::VerifyRequest>) -> impl Responder {
     let coll: Collection<DatabaseUser> = db.collection("users");
 
     let result = coll
-        .find_one(
-            doc! {"auth_tokens":  &info.auth_token},
-            Some(mongodb::options::FindOneOptions::builder().build()),
-        )
+        .find_one(doc! {"auth_tokens.token":  &info.auth_token}, None)
         .await;
 
     if result.is_err() {
@@ -149,6 +157,15 @@ async fn verify(info: web::Json<dtos::user::VerifyRequest>) -> impl Responder {
     let result = result.unwrap();
     let is_verified = result.is_some();
 
+    if is_verified == false {
+        let json = serde_json::to_string(&dtos::response::VerifyResponse {
+            is_verified,
+            owner: "None".to_string(),
+        })
+        .expect("Failed to serialize response");
+        return HttpResponse::Ok().body(json);
+    }
+
     let result = result.unwrap();
     let email = result.email;
 
@@ -157,7 +174,7 @@ async fn verify(info: web::Json<dtos::user::VerifyRequest>) -> impl Responder {
     println!("User is verified: {}", is_verified);
     println!("User email: {}", email);
 
-    let response_body = dtos::user::VerifyResponse {
+    let response_body = dtos::response::VerifyResponse {
         is_verified,
         owner: email_hash,
     };
