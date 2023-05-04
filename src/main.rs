@@ -146,6 +146,8 @@ async fn verify(info: web::Json<dtos::request::VerifyRequest>) -> impl Responder
     let db = client.database("users");
     let coll: Collection<DatabaseUser> = db.collection("users");
 
+    // Hallo Welt
+
     let result = coll
         .find_one(doc! {"auth_tokens.token":  &info.auth_token}, None)
         .await;
